@@ -20,5 +20,4 @@ function [A,B,S,w] = compute_linearization(x,u,s,n,c_d,accl)
          u + accl - c_d*norm(v)*v];
 
     w = f - A*x - B*u - S*s;
-
 end

@@ -52,6 +52,7 @@ function [Ak,Bk,wk,defect_traj,xbarprop] = compute_zoh_noparam_v3_parallel(tbar,
         solver_options = varargin{1}{2};
 
         parfor k = 1:N-1
+            % lineLength = fprintf('--> [Prop.] evaluating segment: [%.2f, %.2f]\n', tspan{k}(1), tspan{k}(2));
             zk = [xbar(:,k);ABw_init];
 
             [~,z_tmp] = feval(solver_name,@(t,z) zoh_ode(t,z,ufunc{k}(t),func,func_linz,nx,nu,nx2,nxnu),tspan{k},zk,solver_options);
@@ -67,11 +68,13 @@ function [Ak,Bk,wk,defect_traj,xbarprop] = compute_zoh_noparam_v3_parallel(tbar,
             Ak(:,:,k)   = Akmat;
     
             % norm(wk(:,k)-vk(:,k))
+            % fprintf(repmat('\b',1,lineLength));
         end            
 
     elseif nargin == 6
 
         parfor k = 1:N-1
+            % lineLength = fprintf('--> [Prop.] evaluating segment: [%.2f, %.2f]\n', tspan{k}(1), tspan{k}(2));
             zk = [xbar(:,k);ABw_init];
 
             [~,z_] = disc.rk4_march(@(t,z,u) zoh_ode(t,z,u,func,func_linz,nx,nu,nx2,nxnu),tspan{k},zk,h(k),ufunc{k});
@@ -86,6 +89,7 @@ function [Ak,Bk,wk,defect_traj,xbarprop] = compute_zoh_noparam_v3_parallel(tbar,
             Ak(:,:,k)   = Akmat;
     
             % norm(wk(:,k)-vk(:,k))
+            % fprintf(repmat('\b',1,lineLength));
         end            
 
     else 
@@ -107,12 +111,13 @@ function f = zoh_ode(t,z,u,func,func_linz,nx,nu,nx2,nxnu)
     PhiB  = reshape(z(nx+nx2+1        : nx+nx2+nxnu),[nx,nu]);
     Phiw  =         z(nx+nx2+nxnu+1   : nx+nx2+nxnu+nx);    
     
-    [A,B,w] = func_linz(t,x,u);
+    f0 = func(t,x,u);
+    [A,B,w] = func_linz(t,x,u,f0);
 
     f1 = A*PhiA;
     f2 = A*PhiB + B;
     f3 = A*Phiw + w;    
     
-    f = [func(t,x,u);f1(:);f2(:);f3];    
+    f = [f0(:);f1(:);f2(:);f3];    
 
 end

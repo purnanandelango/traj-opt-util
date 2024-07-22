@@ -49,6 +49,7 @@ function [Ak,Bmk,Bpk,wk,defect_traj,xbarprop] = compute_foh_noparam_v1(tbar,xbar
         % h_step = max((1/40)*diff(tspan),h(k)); 
         h_step = h(k);
         
+        fprintf('Now evaluating discretization at time %.2f\n', tspan(1));
         if nargin == 6
             [~,z_] = disc.rk4_march(@(t,z,u,p) foh_ode(t,z,u,p,func,func_linz,nx,nx2),tspan,zk,h_step,ufunc,tspan);
         elseif nargin == 7

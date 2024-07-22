@@ -24,7 +24,7 @@ function [Ak,Bmk,Bpk,wk,defect_traj,xbarprop] = compute_foh_noparam_v3(tbar,xbar
     [nx,N] = size(xbar);
     nu = size(ubar,1);
 
-    if length(h) == 1 % Same integration step for each subinterval
+    if isscalar(h) % Same integration step for each subinterval
         h = h*ones(1,N-1);
     end    
     
@@ -50,6 +50,7 @@ function [Ak,Bmk,Bpk,wk,defect_traj,xbarprop] = compute_foh_noparam_v3(tbar,xbar
         % h_step = max((1/40)*diff(tspan),h(k)); 
         h_step = h(k);
         
+        fprintf('MS Iteration for t=%.2f\n', tspan(1));
         if nargin == 7
             [~,z_tmp] = feval(varargin{1}{1},@(t,z) foh_ode(t,z,ufunc(t),tspan,func,func_linz,nx,nu,nx2,nxnu),tspan,zk,varargin{1}{2});
             z_ = z_tmp';
@@ -71,6 +72,9 @@ function [Ak,Bmk,Bpk,wk,defect_traj,xbarprop] = compute_foh_noparam_v3(tbar,xbar
         Ak(:,:,k)   = Akmat;
 
         % norm(wk(:,k)-vk(:,k))
+
+        % plot3c = @(arr) plot3(arr(1,:), arr(2,:), -arr(3,:), 'k');
+        % plot3c(z_);
     end
 
 end
@@ -86,7 +90,6 @@ function f = foh_ode(t,z,u,p,func,func_linz,nx,nu,nx2,nxnu)
     Phiw  =         z(nx+nx2+2*nxnu+1 : nx+nx2+2*nxnu+nx);    
     
     [A,B,w] = func_linz(t,x,u);
-    
     tkp1 = p(end);
     tk = p(end-1);
     delta_t = tkp1-tk;
