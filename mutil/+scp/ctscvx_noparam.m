@@ -1,9 +1,10 @@
-function [xbar,ubar,cost_val,converged] = ctscvx_noparam(xbar,ubar,prb,sys_constr_cost_fun,varargin)
+function [xbar,ubar,cost_val,converged,iters_cvg] = ctscvx_noparam(xbar,ubar,prb,sys_constr_cost_fun,varargin)
 % ct-SCvx without parameters as decision variables and FOH/ZOH/FBP/Impulse discretization
 % Provision for updating problem parameters after each SCP iteration
 % Exact penalty weight can be matrix-valued
 
     converged = false;
+    iters_cvg = 0;
     K = prb.K;
 
     % Check if type of discretization computation is specified
@@ -42,11 +43,12 @@ function [xbar,ubar,cost_val,converged] = ctscvx_noparam(xbar,ubar,prb,sys_const
         expnwt = prb.W_ep;
     end
     
-    fprintf("+--------------------------------------------------------------------------------------------------------+\n");
-    fprintf("|                           ..::   ct-SCvx - Successive Convexification   ::..                           |\n");
-    fprintf("+-------+------------+-----------+-----------+---------+---------+------------+---------+----------------+\n");
-    fprintf("| Iter. | Prop. [ms] | Prs. [ms] | Slv. [ms] | log(px) | log(ep) |    Cost    |   ToF   | log(ep cnstr.) |\n");
-    fprintf("+-------+------------+-----------+-----------+---------+---------+------------+---------+----------------+\n");
+    print_statements = {};
+    print_statements{end+1} = fprintf("+--------------------------------------------------------------------------------------------------------+\n");
+    print_statements{end+1} = fprintf("|                           ..::   ct-SCvx - Successive Convexification   ::..                           |\n");
+    print_statements{end+1} = fprintf("+-------+------------+-----------+-----------+---------+---------+------------+---------+----------------+\n");
+    print_statements{end+1} = fprintf("| Iter. | Prop. [ms] | Prs. [ms] | Slv. [ms] | log(px) | log(ep) |    Cost    |   ToF   | log(ep cnstr.) |\n");
+    print_statements{end+1} = fprintf("+-------+------------+-----------+-----------+---------+---------+------------+---------+----------------+\n");
     
     for j = 1:prb.scp_iters
         
@@ -203,7 +205,7 @@ function [xbar,ubar,cost_val,converged] = ctscvx_noparam(xbar,ubar,prb,sys_const
         [cnstr_sys,cost_fun,ep_constr_term] = sys_constr_cost_fun(x_unscl,u_unscl,prb,...
                                                                   xbar,ubar);
 
-
+        
         cnstr = [cnstr;cnstr_sys];
         
         % Objective
@@ -214,12 +216,14 @@ function [xbar,ubar,cost_val,converged] = ctscvx_noparam(xbar,ubar,prb,sys_const
         yalmip_out = optimize(cnstr,obj_fun,prb.solver_settings);
         % assert(ismember(yalmip_out.problem,[0,3]),"Subproblem is unsolved.\nSolver message: %s",yalmiperror(yalmip_out.problem));
         if ~ismember(yalmip_out.problem,[0,4])
-            fprintf("+--------------------------------------------------------------------------------------------------------+\n");
-            fprintf('Subproblem is unsolved. Returning the previous iterate.\n'); 
+            cost_val = Inf;
+            converged = false;
+            print_statements{end+1} = fprintf("+--------------------------------------------------------------------------------------------------------+\n");
+            print_statements{end+1} = fprintf('Subproblem is unsolved. Returning the previous iterate.\n');
             break
         end
         if yalmip_out.problem == 4
-            warning("Solver numerical issues.");
+            % warning("Solver numerical issues.");
         end
         
         % Post process
@@ -250,19 +254,30 @@ function [xbar,ubar,cost_val,converged] = ctscvx_noparam(xbar,ubar,prb,sys_const
         ToF = prb.time_of_maneuver(xbar,ubar);        
         
         % Console output
-        fprintf('|  %02d   |   %7.1e  |  %7.1e  |  %7.1e  | %5.1f   | %5.1f   | %10.3e | %7.1e |    %5.1f       |\n',j,propagate_time,parse_time,solve_time,log10(px_term),log10(ep_term),cost_val,ToF,log10(ep_constr_term));
+        print_statements{end+1} = fprintf('|  %02d   |   %7.1e  |  %7.1e  |  %7.1e  | %5.1f   | %5.1f   | %10.3e | %7.1e |    %5.1f       |\n',j,propagate_time,parse_time,solve_time,log10(px_term),log10(ep_term),cost_val,ToF,log10(ep_constr_term));
         
-        if ep_term < prb.eps_ep && px_term < prb.eps_px
+        if ep_term < prb.eps_ep && px_term < prb.eps_px && ep_constr_term < prb.eps_ep
             converged = true;
-            fprintf("+--------------------------------------------------------------------------------------------------------+\n")
-            fprintf('Converged!\n')
+            iters_cvg = j;
+            print_statements{end+1} = fprintf("+--------------------------------------------------------------------------------------------------------+\n");
+            print_statements{end+1} = fprintf('Converged!\n');
             break
         end
 
         if nargin == 5 && j < prb.scp_iters % Update problem parameters
             prb = varargin{1}(prb,xbar,ubar);
         end
-        
     end
 
+    if ~converged
+        iters_cvg = prb.scp_iters;
+    end
+    
+    if isfield(prb,"delete_print_statements")
+        if prb.delete_print_statements
+            for k = 1:length(print_statements)
+                fprintf(repmat('\b',1,print_statements{k}));
+            end
+        end
+    end
 end

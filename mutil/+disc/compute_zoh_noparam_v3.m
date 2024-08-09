@@ -79,12 +79,13 @@ function f = zoh_ode(t,z,u,func,func_linz,nx,nu,nx2,nxnu)
     PhiB  = reshape(z(nx+nx2+1        : nx+nx2+nxnu),[nx,nu]);
     Phiw  =         z(nx+nx2+nxnu+1   : nx+nx2+nxnu+nx);    
     
-    [A,B,w] = func_linz(t,x,u);
+    f0 = func(t,x,u);
+    [A,B,w] = func_linz(t,x,u,f0);
 
     f1 = A*PhiA;
     f2 = A*PhiB + B;
     f3 = A*Phiw + w;    
     
-    f = [func(t,x,u);f1(:);f2(:);f3];
+    f = [f0;f1(:);f2(:);f3];
 
 end
